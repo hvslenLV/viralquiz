@@ -1370,6 +1370,12 @@ function PaymentScreen({
               </div>
             </div>
 
+            <div className="rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 mb-4">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-amber-300/80 mb-2">Төлбөрийн данс</p>
+              <p className="text-xl font-black text-white">5404840683</p>
+              <p className="mt-2 text-sm text-purple-200/70">Төлбөрийн утга дээр Gmail хаягаа бичнэ үү.</p>
+            </div>
+
             <motion.button
               onClick={onConfirm}
               disabled={!userInfo}
@@ -1411,7 +1417,7 @@ function PaymentScreen({
             <p className="text-sm font-semibold text-amber-300">Khan Bank</p>
             <p className="text-lg font-black text-white">5404840683</p>
             <p className="mt-2 text-[11px] leading-relaxed text-purple-200/70">
-              Төлбөр хийсний дараа төлбөрийн утга дээр Gmail хаягаа заавал бичнэ үү. Үгүй бол таны уншлага хүлээлгэж магадгүй.
+              Төлбөрийн утга дээр Gmail хаягаа бичнэ үү.
             </p>
           </div>
         </div>
