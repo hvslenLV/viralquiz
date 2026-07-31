@@ -1641,7 +1641,7 @@ export default function App() {
   };
 
   const handleAdminLogin = (email: string, password: string) => {
-    const isValid = email.trim().toLowerCase() === "admin@viralquiz.mn" && password === "ViralQuiz2026!";
+    const isValid = email.trim().toLowerCase() === "admin@gmail.com" && password === "Hvslee888$";
     if (isValid) {
       setAdminAuthenticated(true);
       setScreen("admin");
