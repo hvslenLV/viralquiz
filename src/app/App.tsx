@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { createClient } from "@supabase/supabase-js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,10 @@ interface ResultData {
   detail: string;
   socialCount: number;
 }
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 // ─── Life Path Questions ──────────────────────────────────────────────────────
 
@@ -1644,7 +1649,7 @@ export default function App() {
     setScreen("home");
   };
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     setPaymentClicks((count) => count + 1);
     if (result && userInfo) {
       const submission: Submission = {
@@ -1659,6 +1664,24 @@ export default function App() {
         createdAt: new Date().toISOString(),
       };
       setSubmissions((prev) => [submission, ...prev]);
+
+      if (supabase) {
+        try {
+          await supabase.from("submissions").insert({
+            id: submission.id,
+            name: submission.name,
+            email: submission.email,
+            age: submission.age,
+            gender: submission.gender,
+            quiz_type: submission.quizType,
+            headline: submission.headline,
+            status: submission.status,
+            created_at: submission.createdAt,
+          });
+        } catch {
+          // Ignore Supabase write errors and keep the local demo state.
+        }
+      }
     }
     setScreen("payment-confirmation");
   };
@@ -1672,6 +1695,33 @@ export default function App() {
     setEntryCount((c) => c + 1);
     setScreen("result");
   };
+
+  useEffect(() => {
+    const loadSubmissions = async () => {
+      if (!supabase) return;
+      const { data, error } = await supabase
+        .from("submissions")
+        .select("id,name,email,age,gender,quiz_type,headline,status,created_at")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        const mapped: Submission[] = data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          email: item.email,
+          age: item.age,
+          gender: item.gender,
+          quizType: item.quiz_type,
+          headline: item.headline,
+          status: item.status,
+          createdAt: item.created_at,
+        }));
+        setSubmissions(mapped);
+      }
+    };
+
+    loadSubmissions();
+  }, []);
 
   return (
     <>
