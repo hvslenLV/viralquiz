@@ -3,9 +3,30 @@ import { motion, AnimatePresence } from "motion/react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Screen = "home" | "money-input" | "name-input" | "life-input" | "result" | "payment" | "admin" | "payment-confirmation";
+type Screen = "home" | "profile" | "money-input" | "name-input" | "life-input" | "result" | "payment" | "admin-login" | "admin" | "payment-confirmation";
 
 type QuizType = "money" | "name" | "life";
+
+type Gender = "male" | "female" | "other";
+
+interface UserInfo {
+  name: string;
+  email: string;
+  age: string;
+  gender: Gender;
+}
+
+interface Submission {
+  id: string;
+  name: string;
+  email: string;
+  age: string;
+  gender: Gender;
+  quizType: QuizType;
+  headline: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: string;
+}
 
 interface ResultData {
   quizType: QuizType;
@@ -73,26 +94,80 @@ function generateMoneyResult(day: number, month: number, year: number): ResultDa
 }
 
 function generateNameResult(name: string): ResultData {
-  const vowels = (name.match(/[аэиоуөүёАЭИОУӨҮЁ]/g) || []).length;
-  const total = name.length;
+  const clean = name.trim();
+  const vowelsArr = (clean.match(/[аэиоуөүёАЭИОУӨҮЁ]/g) || []);
+  const vowels = vowelsArr.length;
+  const total = clean.length;
   const ratio = vowels / Math.max(total, 1);
-  const idx = Math.min(Math.floor(ratio * 5), 4);
-  const archetypes = [
-    { sym: "🜂", label: "Галын шинж", desc: "Таны нэрний дайсны нь хүч чадал, тэмүүлэлийг илэрхийлдэг. Та зорилгодоо хүрэхийн тулд ямар ч бэрхшээлийг даван туулдаг. Удирдагчийн шинж чанар таны нэрэнд нуугдаж байна.", detail: "Таны нэрний эхний үсэг нь галын нийлбэрт орох бөгөөд та найз нөхдийнхөө дотор байгалиасаа удирдагч болдог." },
-    { sym: "🜄", label: "Усны шинж", desc: "Таны нэр гүн мэдрэмжийг нуугдуулдаг. Та хүмүүсийн зүрх сэтгэлийг уншиж, тэдний хэрэгцээг ойлгодог. Эмпати, бүтээлч сэтгэлгээ таны хамгийн том хүч.", detail: "Усны шинжтэй хүмүүс урлаг, хүмүүн хоорондын харилцаанд сайн. Таны зориулалт бол бусдад үзэгдэхгүй дэмжлэг болох явдал юм." },
-    { sym: "🜁", label: "Агаарын шинж", desc: "Таны нэрэнд эрх чөлөө, бодлын эрх чөлөөний эрч нуугддаг. Та шинэ санаануудыг хурдан олж авдаг, нийгэмчилгэнд гайхалтай.", detail: "Агаарын шинжтэй хүн хичнээн ч орчинд дасан зохицох чадвартай. Та харилцаа холбоо, санаа бодлоор дамжуулан амжилтанд хүрнэ." },
-    { sym: "🜃", label: "Газрын шинж", desc: "Таны нэрний гүн утга нь тогтвортой байдал, найдвартай байдлыг илэрхийлдэг. Та амласнаа биелүүлдэг, хариуцлагатай хүн. Бусад тань танд найддаг.", detail: "Газрын шинжтэй хүмүүс удаан хугацааны харилцаа, хамтын ажиллагааг эрхэмлэдэг. Таны нэр найдвартай байдлын тэмдэг юм." },
-    { sym: "✦", label: "Одны шинж", desc: "Таны нэрэнд ховор, онцгой энерги байна. Та өөртөө итгэлтэй, бусдаас ялгардаг. Заяасан зам тань их гэрэлтэй, харин тэгш биш байна.", detail: "Одны шинжтэй хүмүүс өөрийн замаар явдаг. Хүмүүс тантай ойр болохыг хүсдэг ч та тодорхой зайг барьдаг — энэ таны хамгаалалт." },
-  ];
-  const a = archetypes[idx];
+  const first = clean.charAt(0) || "";
+  const last = clean.charAt(clean.length - 1) || "";
+  const hasRepeat = /(.)\1/.test(clean.toLowerCase());
+
+  // Derive a pattern key based on explicit checks so outputs vary meaningfully
+  let pattern: string;
+  if (total <= 3) pattern = "short";
+  else if (hasRepeat) pattern = "steady";
+  else if (/[аеёиоуүэөүёAEIOUY]/i.test(last)) pattern = "flow";
+  else if (ratio > 0.55) pattern = "empath";
+  else if (first && /[бвгджзклмнпрстфхцчшщ]/i.test(first)) pattern = "strong";
+  else pattern = "balanced";
+
+  // Templates keyed by pattern
+  const templates: Record<string, { sym: string; label: string; headline: (n: string) => string; desc: (n: string) => string; detail: (n: string) => string }> = {
+    short: {
+      sym: "⚡",
+      label: "Товч, хүчтэй",
+      headline: (n) => `${n.toUpperCase()} — ТОВЧ БА ХҮЧТЭЙ`,
+      desc: (n) => `Таны нэр богино боловч хурц цохилт шиг нөлөөтэй. Богино нэр үр дүнтэй байж, шууд нөлөөлдөг.`,
+      detail: (n) => `Богино нэртэй хүмүүс хурдан шийдвэр гаргадаг. ${n.charAt(0).toUpperCase()} үсгээр эхлэх нь илүү танигдах чадварыг нэмдэг.`,
+    },
+    steady: {
+      sym: "🛡️",
+      label: "Тогтвортой",
+      headline: (n) => `${n} — НАЙДВАРТАЙ БА ТУУШТАЙ`,
+      desc: (n) => `Та давтагдсан авиа агуулсан нэртэй тул тууштай нэг зүүгээр явдаг шинжтэй. Энэ нь таны тэсвэр тэвчээрийг илтгэнэ.`,
+      detail: (n) => `Давтагдсан үсэг нь таны тууштай, баргар чанарыг бэлгэдэнэ. Урт хугацааны харилцаа, ажлын төслүүдэд энэ таны давуу тал болно.`,
+    },
+    flow: {
+      sym: "🌊",
+      label: "Үргэлжлэх урсгал",
+      headline: (n) => `${n} — ҮРГЭЛЖЛЭХ, ТӨГСӨГДӨХ`,
+      desc: (n) => `Таны нэрийн төгсгөл нь авианаас шалтгаалж, урсгалтай, харилцаанд амархан нийцдэг. Энэ нь хүмүүсийг тайвшруулах чадвартай.`,
+      detail: (n) => `Сүүл нь дуулаа эсвэл зөөлөн авиа агуулсан тул та бусадтай хурдан нийлж ажилладаг. Энэ онцлог нь багийн доторх түншлэлд их тусална.`,
+    },
+    empath: {
+      sym: "💧",
+      label: "Мэдрэмжтэй",
+      headline: (n) => `${n} — МЭДРЭМЖ, УХАМСАРТАЙ`,
+      desc: (n) => `Нэрэнд тань олон эгшиг буй тул та мэдрэмж ихтэй, бусдын хэрэгцээг сайн ойлгодог.`,
+      detail: (n) => `Эгшгийн тоо их байх нь үгс, урлаг, харилцаанд аварга хүч өгдөг. Та хүмүүст эмпатитай хандах замаар олны хүндэтгэлийг хүлээх болно.`,
+    },
+    strong: {
+      sym: "🔥",
+      label: "Хүчтэй эхлэл",
+      headline: (n) => `${n} — ХҮЧТЭЙ ЭХЛЭЛ`,
+      desc: (n) => `Нэрээ эхэлдэг анхны үсэг нь тухайн хүний амжилтын эхлэлд нөлөөлөх бөгөөд таны анхны авиа хүчтэй, зоригтой байдлыг өгдөг.`,
+      detail: (n) => `Эхний үсэг нь удирдах чадвар, зориг илтгэнэ. ${n.charAt(0).toUpperCase()} үзэгдэл нь хүмүүст итгэл төрүүлнэ.`,
+    },
+    balanced: {
+      sym: "✦",
+      label: "Тэнцвэртэй",
+      headline: (n) => `${n} — ТЭНЦВЭР, ДУНД ЗАЙ`,
+      desc: (n) => `Таны нэр нь тэнцвэртэй: мэдрэмж ба логик хоёрыг багтаасан. Та аливааг жигд хянаж чаддаг.`,
+      detail: (n) => `Тэнцвэрт байдлын ачаар та олон дүрэмт хувилбаруудад амархан дасан зохицоно. Алхам бүрийг бодож хийдэг.`,
+    },
+  };
+
+  const tpl = templates[pattern] || templates.balanced;
+
   return {
     quizType: "name",
-    symbol: a.sym,
-    symbolLabel: a.label,
-    headline: `"${name.toUpperCase()}" — ${a.label.toUpperCase()}`,
-    description: a.desc,
-    detail: a.detail,
-    socialCount: 2318 + name.length * 127,
+    symbol: tpl.sym,
+    symbolLabel: tpl.label,
+    headline: tpl.headline(clean),
+    description: tpl.desc(clean),
+    detail: tpl.detail(clean),
+    socialCount: 2318 + total * 127 + vowels * 31,
   };
 }
 
@@ -272,7 +347,7 @@ function QuizCard({
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
 
-function HomeScreen({ onStart, onAdmin }: { onStart: (quiz: QuizType) => void; onAdmin: () => void }) {
+function HomeScreen({ onStart, onAdminLogin, onProfile, userInfo }: { onStart: (quiz: QuizType) => void; onAdminLogin: () => void; onProfile: () => void; userInfo: UserInfo | null }) {
   return (
     <div className="min-h-screen flex flex-col">
       {/* Hero */}
@@ -336,7 +411,7 @@ function HomeScreen({ onStart, onAdmin }: { onStart: (quiz: QuizType) => void; o
           className="text-lg md:text-xl font-medium mb-2"
           style={{ color: "#e8d5c4", fontFamily: "'Playfair Display', serif" }}
         >
-          ТАНЫ ТАВИЛАНГ ОЛЖМЭД
+          Таны хувь тавилан, амьдралын замыг илрүүлэх
         </div>
 
         <p className="text-sm text-purple-200/60 max-w-xs leading-relaxed">
@@ -388,12 +463,135 @@ function HomeScreen({ onStart, onAdmin }: { onStart: (quiz: QuizType) => void; o
         />
 
         {/* Footer */}
-        <div className="pt-8 text-center space-y-1">
+        <div className="pt-8 text-center space-y-4">
           <p className="text-xs text-purple-200/30">Өдөр бүр 4,200+ хүн шалгадаг</p>
           <div className="flex justify-center gap-1">
             {["★", "★", "★", "★", "★"].map((s, i) => (
               <span key={i} className="text-xs text-amber-400/60">{s}</span>
             ))}
+          </div>
+          <div className="flex flex-col items-center gap-3 mt-4 sm:flex-row sm:justify-center">
+            <button
+              onClick={onProfile}
+              className="px-4 py-2 rounded-full text-sm font-semibold tracking-wide transition-colors border border-amber-400/30 hover:border-amber-400"
+              style={{ color: '#f5e6d3' }}
+            >
+              {userInfo ? `Профайл: ${userInfo.name}` : 'Профайл бөглөх'}
+            </button>
+            <button
+              onClick={onAdminLogin}
+              className="px-4 py-2 rounded-full text-sm font-semibold tracking-wide transition-colors border border-purple-500/30 hover:border-purple-400"
+              style={{ color: '#d4a853' }}
+            >
+              Админ нэвтрэх
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProfileScreen({
+  userInfo,
+  onSave,
+  onBack,
+}: {
+  userInfo: UserInfo | null;
+  onSave: (user: UserInfo) => void;
+  onBack: () => void;
+}) {
+  const [name, setName] = useState(userInfo?.name || "");
+  const [email, setEmail] = useState(userInfo?.email || "");
+  const [age, setAge] = useState(userInfo?.age || "");
+  const [gender, setGender] = useState<Gender>(userInfo?.gender || "male");
+  const [error, setError] = useState("");
+
+  const handleSubmit = () => {
+    if (!name.trim() || !email.trim() || !age.trim()) {
+      setError("Нэр, нас, Gmail-г оруулна уу");
+      return;
+    }
+    if (!email.includes("@")) {
+      setError("Зөв Gmail хаяг оруулна уу");
+      return;
+    }
+    onSave({ name: name.trim(), email: email.trim(), age: age.trim(), gender });
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex items-center px-4 pt-12 pb-4">
+        <button
+          onClick={onBack}
+          className="text-amber-400/70 text-sm flex items-center gap-2 hover:text-amber-400 transition-colors"
+        >
+          ← Буцах
+        </button>
+      </div>
+
+      <div className="flex-1 px-5 max-w-md mx-auto w-full">
+        <div className="text-center mb-10">
+          <div className="text-4xl mb-3" style={{ filter: "drop-shadow(0 0 15px rgba(212,168,83,0.7))" }}>
+            👤
+          </div>
+          <h2 className="text-2xl font-black mb-2" style={{ fontFamily: "'Playfair Display', serif", color: "#d4a853" }}>
+            Хувийн мэдээлэл
+          </h2>
+          <p className="text-sm text-purple-200/60">Нас, хүйс, Gmail-ээ өгнө үү</p>
+        </div>
+
+        <div className="rounded-2xl p-6 mb-6" style={{ background: "rgba(26,14,46,0.9)", border: "1px solid rgba(212,168,83,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+          <div className="space-y-4">
+            <label className="block text-xs text-amber-400/60 uppercase tracking-wider">Нэр</label>
+            <input
+              type="text"
+              placeholder="Таны нэр"
+              value={name}
+              onChange={(e) => { setName(e.target.value); setError(""); }}
+              className="w-full rounded-xl p-4 bg-slate-900 border border-slate-800 text-white"
+            />
+
+            <label className="block text-xs text-amber-400/60 uppercase tracking-wider">Gmail</label>
+            <input
+              type="email"
+              placeholder="name@gmail.com"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              className="w-full rounded-xl p-4 bg-slate-900 border border-slate-800 text-white"
+            />
+
+            <label className="block text-xs text-amber-400/60 uppercase tracking-wider">Нас</label>
+            <input
+              type="number"
+              placeholder="25"
+              value={age}
+              min={10}
+              max={120}
+              onChange={(e) => { setAge(e.target.value); setError(""); }}
+              className="w-full rounded-xl p-4 bg-slate-900 border border-slate-800 text-white"
+            />
+
+            <label className="block text-xs text-amber-400/60 uppercase tracking-wider">Хүйс</label>
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value as Gender)}
+              className="w-full rounded-xl p-4 bg-slate-900 border border-slate-800 text-white"
+            >
+              <option value="male">Эр</option>
+              <option value="female">Эм</option>
+              <option value="other">Бусад</option>
+            </select>
+
+            {error && <p className="text-pink-400 text-sm">{error}</p>}
+
+            <button
+              onClick={handleSubmit}
+              className="w-full py-4 rounded-xl font-bold text-base tracking-wide transition-all active:scale-95"
+              style={{ background: "linear-gradient(135deg, #d4a853, #e879a0)", color: "#0d0618", boxShadow: "0 8px 25px rgba(212,168,83,0.4)" }}
+            >
+              Хадгалах
+            </button>
           </div>
         </div>
       </div>
@@ -986,12 +1184,90 @@ function ResultScreen({
   );
 }
 
+function AdminLoginScreen({
+  onLogin,
+  onBack,
+}: {
+  onLogin: (email: string, password: string) => boolean;
+  onBack: () => void;
+}) {
+  const [email, setEmail] = useState("admin@viralquiz.mn");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = () => {
+    const success = onLogin(email, password);
+    if (!success) {
+      setError("Имэйл эсвэл нууц үг буруу байна.");
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex items-center px-4 pt-12 pb-4">
+        <button
+          onClick={onBack}
+          className="text-amber-400/70 text-sm flex items-center gap-2 hover:text-amber-400 transition-colors"
+        >
+          ← Буцах
+        </button>
+      </div>
+
+      <div className="flex-1 px-5 max-w-md mx-auto w-full">
+        <div className="text-center mb-10">
+          <div className="text-4xl mb-3" style={{ filter: "drop-shadow(0 0 15px rgba(212,168,83,0.7))" }}>
+            🔐
+          </div>
+          <h2 className="text-3xl font-black mb-2" style={{ fontFamily: "'Playfair Display', serif", color: "#d4a853" }}>
+            Админ нэвтрэх
+          </h2>
+          <p className="text-sm text-purple-200/60">Зөвхөн админ хэрэглэгч нэвтрэх эрхтэй.</p>
+        </div>
+
+        <div className="rounded-2xl p-6 mb-6" style={{ background: "rgba(26,14,46,0.9)", border: "1px solid rgba(212,168,83,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+          <div className="space-y-4">
+            <label className="block text-xs text-amber-400/60 uppercase tracking-wider">Имэйл</label>
+            <input
+              type="email"
+              placeholder="admin@viralquiz.mn"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              className="w-full rounded-xl p-4 bg-slate-900 border border-slate-800 text-white"
+            />
+
+            <label className="block text-xs text-amber-400/60 uppercase tracking-wider">Нууц үг</label>
+            <input
+              type="password"
+              placeholder="********"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(""); }}
+              className="w-full rounded-xl p-4 bg-slate-900 border border-slate-800 text-white"
+            />
+
+            {error && <p className="text-xs text-pink-400">{error}</p>}
+
+            <button
+              onClick={handleSubmit}
+              className="w-full py-4 rounded-2xl font-bold text-base tracking-wide"
+              style={{ background: "linear-gradient(135deg, #d4a853, #e879a0)", color: "#0d0618" }}
+            >
+              Нэвтрэх
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PaymentScreen({
   data,
+  userInfo,
   onBack,
   onConfirm,
 }: {
   data: ResultData;
+  userInfo: UserInfo | null;
   onBack: () => void;
   onConfirm: () => void;
 }) {
@@ -1091,16 +1367,17 @@ function PaymentScreen({
 
             <motion.button
               onClick={onConfirm}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full py-4 rounded-2xl font-bold text-base tracking-wide transition-all"
+              disabled={!userInfo}
+              whileHover={userInfo ? { scale: 1.02 } : undefined}
+              whileTap={userInfo ? { scale: 0.98 } : undefined}
+              className={`w-full py-4 rounded-2xl font-bold text-base tracking-wide transition-all ${userInfo ? "" : "opacity-50 cursor-not-allowed"}`}
               style={{
-                background: `linear-gradient(135deg, ${accentColor}, #e879a0)`,
+                background: userInfo ? `linear-gradient(135deg, ${accentColor}, #e879a0)` : "#4b5563",
                 color: "#0d0618",
-                boxShadow: `0 10px 25px ${accentColor}40`,
+                boxShadow: userInfo ? `0 10px 25px ${accentColor}40` : "none",
               }}
             >
-              Төлбөр төлөх
+              {userInfo ? "Төлбөр төлөх" : "Профайл шаардлагатай"}
             </motion.button>
           </div>
         </motion.div>
@@ -1108,13 +1385,27 @@ function PaymentScreen({
         <div className="rounded-2xl p-5 text-xs text-purple-200/40 bg-white/5 border border-white/10">
           <p className="font-semibold text-purple-100 mb-2">Анхааруулга</p>
           <p className="leading-relaxed mb-3">
-            Энэ бол дизайн дээр суурилсан төлбөрийн хуудас. Байнгын төлбөр, банкны мэдээлэл эсвэл Gmail илгээх үйлчилгээг эндээс шууд гүйцэтгэх боломжгүй.
+            Төлбөр баталгаажуулсны дараа таны Gmail хаягаар дэлгэрэнгүй тайлбар илгээгдэнэ. Тиймээс төлбөр хийхдээ заавал өөрийн Gmail хаягаа ашиглана уу.
           </p>
+          {userInfo ? (
+            <>
+              <p className="leading-relaxed mb-3">
+                Таны Gmail: <strong>{userInfo.email}</strong>
+              </p>
+              <p className="leading-relaxed">
+                Төлбөрийн утга дээр заавал энэ Gmail хаягаа бичиж шилжүүлнэ үү.
+              </p>
+            </>
+          ) : (
+            <p className="leading-relaxed mb-3 text-pink-400">
+              Та эхлээд профайлаа бүртгэж, Gmail-ээ оруулна уу.
+            </p>
+          )}
           <p className="leading-relaxed">
             Төлбөрийн утга дээр өөрийн Gmail хаягаа бичиж, доорх данс руу шилжүүлнэ үү:
           </p>
           <p className="mt-3 font-semibold text-amber-300">
-            Khan Bank данс: 5404840683
+            Khan Bank данс: 540484683
           </p>
         </div>
       </div>
@@ -1126,21 +1417,29 @@ function AdminScreen({
   entryCount,
   paymentPageViews,
   paymentClicks,
-  onClose,
+  submissions,
+  onLogout,
 }: {
   entryCount: number;
   paymentPageViews: number;
   paymentClicks: number;
-  onClose: () => void;
+  submissions: Submission[];
+  onLogout: () => void;
 }) {
   return (
     <div className="min-h-screen flex flex-col pb-6">
-      <div className="flex items-center px-4 pt-12 pb-4">
+      <div className="flex items-center justify-between px-4 pt-12 pb-4">
         <button
-          onClick={onClose}
+          onClick={onLogout}
           className="text-amber-400/70 text-sm flex items-center gap-2 hover:text-amber-400 transition-colors"
         >
           ← Буцах
+        </button>
+        <button
+          onClick={onLogout}
+          className="text-purple-200/70 text-sm rounded-full px-3 py-2 border border-purple-500/20 hover:border-purple-400 hover:text-purple-100 transition-colors"
+        >
+          Гарах
         </button>
       </div>
 
@@ -1198,6 +1497,42 @@ function AdminScreen({
           <p className="text-sm leading-relaxed text-purple-200/70">
             Энэ самбар нь демо зориулалттай бөгөөд таны орж ирсэн хэрэглэгчийн тоо болон төлбөрийн товч дарагдсаныг харна. Төлбөр баталгаажуулах бол бодит төлбөрийн гүйцэтгэл шаардлагатай.
           </p>
+        </div>
+
+        <div className="mt-8 rounded-3xl p-6 bg-slate-950/95 border border-amber-400/10 shadow-[0_30px_80px_rgba(212,168,83,0.08)]">
+          <div className="text-sm font-semibold text-amber-300 mb-4">Оруулсан мэдээлэл</div>
+          {submissions.length === 0 ? (
+            <p className="text-sm text-purple-200/60">Одоогоор бүртгэлтэй хэрэглэгч байхгүй.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-separate border-spacing-0">
+                <thead>
+                  <tr className="text-xs uppercase text-purple-200/60">
+                    <th className="pb-3 pr-3">Огноо</th>
+                    <th className="pb-3 pr-3">Нэр</th>
+                    <th className="pb-3 pr-3">Gmail</th>
+                    <th className="pb-3 pr-3">Нас</th>
+                    <th className="pb-3 pr-3">Хүйс</th>
+                    <th className="pb-3 pr-3">Тест</th>
+                    <th className="pb-3 pr-3">Төлөв</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map((item) => (
+                    <tr key={item.id} className="border-t border-white/10">
+                      <td className="py-3 pr-3 text-xs text-purple-200/50">{new Date(item.createdAt).toLocaleDateString()}</td>
+                      <td className="py-3 pr-3 text-sm text-purple-100">{item.name}</td>
+                      <td className="py-3 pr-3 text-sm text-purple-100">{item.email}</td>
+                      <td className="py-3 pr-3 text-sm text-purple-100">{item.age}</td>
+                      <td className="py-3 pr-3 text-sm text-purple-100">{item.gender}</td>
+                      <td className="py-3 pr-3 text-sm text-purple-100">{item.quizType}</td>
+                      <td className="py-3 pr-3 text-sm text-amber-300">{item.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1257,9 +1592,29 @@ export default function App() {
   const [entryCount, setEntryCount] = useState(0);
   const [paymentPageViews, setPaymentPageViews] = useState(0);
   const [paymentClicks, setPaymentClicks] = useState(0);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [pendingQuiz, setPendingQuiz] = useState<QuizType | null>(null);
+  const [isAdminAuthenticated, setAdminAuthenticated] = useState(false);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+
+  const handleSaveProfile = (user: UserInfo) => {
+    setUserInfo(user);
+    if (pendingQuiz) {
+      const nextQuiz = pendingQuiz;
+      setPendingQuiz(null);
+      setScreen(`${nextQuiz}-input` as Screen);
+      return;
+    }
+    setScreen("home");
+  };
 
   const handleStart = (quiz: QuizType) => {
     setActiveQuiz(quiz);
+    if (!userInfo) {
+      setPendingQuiz(quiz);
+      setScreen("profile");
+      return;
+    }
     setScreen(`${quiz}-input` as Screen);
   };
 
@@ -1268,8 +1623,41 @@ export default function App() {
     setScreen("payment");
   };
 
+  const handleOpenAdminLogin = () => {
+    setScreen("admin-login");
+  };
+
+  const handleAdminLogin = (email: string, password: string) => {
+    const isValid = email.trim().toLowerCase() === "admin@viralquiz.mn" && password === "ViralQuiz2026!";
+    if (isValid) {
+      setAdminAuthenticated(true);
+      setScreen("admin");
+      return true;
+    }
+    return false;
+  };
+
+  const handleAdminLogout = () => {
+    setAdminAuthenticated(false);
+    setScreen("home");
+  };
+
   const handleConfirmPayment = () => {
     setPaymentClicks((count) => count + 1);
+    if (result && userInfo) {
+      const submission: Submission = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: userInfo.name,
+        email: userInfo.email,
+        age: userInfo.age,
+        gender: userInfo.gender,
+        quizType: result.quizType,
+        headline: result.headline,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      };
+      setSubmissions((prev) => [submission, ...prev]);
+    }
     setScreen("payment-confirmation");
   };
 
@@ -1327,7 +1715,7 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <HomeScreen onStart={handleStart} onAdmin={handleOpenAdmin} />
+                <HomeScreen onStart={handleStart} onAdminLogin={handleOpenAdminLogin} onProfile={() => setScreen("profile")} userInfo={userInfo} />
               </motion.div>
             )}
 
@@ -1394,6 +1782,7 @@ export default function App() {
               >
                 <PaymentScreen
                   data={result}
+                  userInfo={userInfo}
                   onBack={() => setScreen("result")}
                   onConfirm={handleConfirmPayment}
                 />
@@ -1411,6 +1800,35 @@ export default function App() {
               </motion.div>
             )}
 
+            {screen === "profile" && (
+              <motion.div
+                key="profile"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <ProfileScreen
+                  userInfo={userInfo}
+                  onSave={handleSaveProfile}
+                  onBack={() => setScreen("home")}
+                />
+              </motion.div>
+            )}
+            {screen === "admin-login" && (
+              <motion.div
+                key="admin-login"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <AdminLoginScreen
+                  onLogin={handleAdminLogin}
+                  onBack={() => setScreen("home")}
+                />
+              </motion.div>
+            )}
             {screen === "admin" && (
               <motion.div
                 key="admin"
@@ -1423,7 +1841,8 @@ export default function App() {
                   entryCount={entryCount}
                   paymentPageViews={paymentPageViews}
                   paymentClicks={paymentClicks}
-                  onClose={() => setScreen("home")}
+                  submissions={submissions}
+                  onLogout={handleAdminLogout}
                 />
               </motion.div>
             )}
