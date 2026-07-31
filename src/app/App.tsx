@@ -1401,12 +1401,14 @@ function PaymentScreen({
               Та эхлээд профайлаа бүртгэж, Gmail-ээ оруулна уу.
             </p>
           )}
-          <p className="leading-relaxed">
-            Төлбөрийн утга дээр өөрийн Gmail хаягаа бичиж, доорх данс руу шилжүүлнэ үү:
-          </p>
-          <p className="mt-3 font-semibold text-amber-300">
-            Khan Bank данс: 540484683
-          </p>
+          <div className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-amber-300/80 mb-2">Хүлээн авах данс</p>
+            <p className="text-sm font-semibold text-amber-300">Khan Bank</p>
+            <p className="text-lg font-black text-white">5404840683</p>
+            <p className="mt-2 text-[11px] leading-relaxed text-purple-200/70">
+              Төлбөр хийсний дараа төлбөрийн утга дээр Gmail хаягаа заавал бичнэ үү. Үгүй бол таны уншлага хүлээлгэж магадгүй.
+            </p>
+          </div>
         </div>
       </div>
     </motion.div>
