@@ -1346,7 +1346,7 @@ function PaymentScreen({
                   className="text-2xl font-black"
                   style={{ color: accentColor, fontFamily: "'Playfair Display', serif" }}
                 >
-                  12,000₮
+                  8,000₮
                 </p>
               </div>
             </div>
