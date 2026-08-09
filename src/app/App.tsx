@@ -1153,7 +1153,7 @@ function ResultScreen({
                       className="text-2xl font-black"
                       style={{ fontFamily: "'Playfair Display', serif", color: accentColor }}
                     >
-                      12,000₮
+                      8,000₮
                     </span>
                     <span className="text-xs text-purple-200/40 ml-2 line-through">22,000₮</span>
                   </div>
