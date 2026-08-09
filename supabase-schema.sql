@@ -1,5 +1,5 @@
 create table if not exists public.submissions (
-  id text primary key,
+  id sb_publishable_9KfXxVnc-xsXJaUhWNQVvw_p4mYvOJa,
   name text not null,
   email text not null,
   age text not null,
