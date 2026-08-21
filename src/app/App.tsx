@@ -1672,20 +1672,19 @@ export default function App() {
       setSubmissions((prev) => [submission, ...prev]);
 
       if (supabase) {
-        try {
-          await supabase.from("submissions").insert({
-            id: submission.id,
-            name: submission.name,
-            email: submission.email,
-            age: submission.age,
-            gender: submission.gender,
-            quiz_type: submission.quizType,
-            headline: submission.headline,
-            status: submission.status,
-            created_at: submission.createdAt,
-          });
-        } catch {
-          // Ignore Supabase write errors and keep the local demo state.
+        const { error } = await supabase.from("submissions").insert({
+          name: submission.name,
+          email: submission.email,
+          age: submission.age,
+          gender: submission.gender,
+          quiz_type: submission.quizType,
+          headline: submission.headline,
+          status: submission.status,
+          created_at: submission.createdAt,
+        });
+
+        if (error) {
+          console.error("Supabase submission insert failed:", error);
         }
       }
     }
