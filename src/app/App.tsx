@@ -4,9 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Screen = "home" | "profile" | "money-input" | "name-input" | "life-input" | "couple-input" | "result" | "payment" | "admin-login" | "admin" | "payment-confirmation";
+type Screen = "home" | "profile" | "money-input" | "name-input" | "life-input" | "couple-input" | "buddhist-input" | "result" | "payment" | "admin-login" | "admin" | "payment-confirmation";
 
-type QuizType = "money" | "name" | "life" | "couple";
+type QuizType = "money" | "name" | "life" | "couple" | "buddhist";
 
 type Gender = "male" | "female" | "other";
 
@@ -216,6 +216,30 @@ function generateCoupleResult(firstName: string, secondName: string): ResultData
     description: message,
     detail: `${firstName} болон ${secondName} хоёрын нэрний энерги ${score}% нийцэж байна. Хамгийн сайхан харилцаа бол бие биенээ сонсож, хамтдаа хөгжилдөхөөс эхэлдэг.`,
     socialCount: 1760 + score * 12,
+  };
+}
+
+const buddhistGuardians = [
+  { name: "Жанрайсиг", symbol: "🙏", quality: "Энэрэл", text: "Бусдыг ойлгож, зөөлөн сэтгэлээр хандахыг бэлгэддэг." },
+  { name: "Ногоон Дарь Эх", symbol: "🌿", quality: "Хамгаалал", text: "Айдсыг давж, зоригтой алхах хүчийг бэлгэддэг." },
+  { name: "Цагаан Дарь Эх", symbol: "🤍", quality: "Амар амгалан", text: "Тайван байдал, тэвчээр, эдгэрэхийг бэлгэддэг." },
+  { name: "Манзушир", symbol: "🗡️", quality: "Мэргэн ухаан", text: "Тодорхой сэтгэж, зөв шийдвэр гаргахыг бэлгэддэг." },
+  { name: "Очирваань", symbol: "⚡", quality: "Хүч чадал", text: "Саад бэрхшээлийг тууштай даван туулахыг бэлгэддэг." },
+  { name: "Оточ Манал", symbol: "💙", quality: "Эдгэрэл", text: "Бие, сэтгэлээ анхаарч тэнцвэрээ олохыг бэлгэддэг." },
+  { name: "Бадамсамбуу", symbol: "🪷", quality: "Өөрчлөлт", text: "Бэрхшээлийг боломж болгон хувиргахыг бэлгэддэг." },
+  { name: "Махакала", symbol: "🛡️", quality: "Хамгаалагч", text: "Сөрөг зүйлээс өөрийгөө хамгаалж, хилээ тогтоохыг бэлгэддэг." },
+];
+
+function generateBuddhistResult(guardianIndex: number): ResultData {
+  const guardian = buddhistGuardians[guardianIndex];
+  return {
+    quizType: "buddhist",
+    symbol: guardian.symbol,
+    symbolLabel: guardian.quality,
+    headline: `${guardian.name} - ТАНЫ БЭЛГЭДЭЛ`,
+    description: `${guardian.name} нь ${guardian.quality.toLowerCase()}-ыг бэлгэддэг дүр юм.`,
+    detail: guardian.text,
+    socialCount: 2800 + guardianIndex * 91,
   };
 }
 
@@ -833,6 +857,15 @@ function HomeScreen({ onStart, onAdminLogin, onProfile, userInfo }: { onStart: (
           onClick={() => onStart("couple")}
         />
 
+        <QuizCard
+          icon="☸️"
+          title="БУРХНЫ БЭЛГЭДЭЛ"
+          subtitle="8 дүр · 1 минут"
+          description="Жанрайсиг, Дарь Эх, Манзушир болон бусад бурхны бэлгэдлээс танд тохирох нэгийг random-оор илрүүлээрэй"
+          gradient="linear-gradient(135deg, #2a1d0e 0%, #24162b 60%, #121a27 100%)"
+          onClick={() => onStart("buddhist")}
+        />
+
         {/* Footer */}
         <div className="pt-8 text-center space-y-4">
           <p className="text-xs text-purple-200/30">Өдөр бүр 4,200+ хүн шалгадаг</p>
@@ -986,7 +1019,9 @@ function MoneyInputScreen({
     const d = parseInt(day);
     const m = parseInt(month);
     const y = parseInt(year);
-    if (!d || !m || !y || d < 1 || d > 31 || m < 1 || m > 12 || y < 1920 || y > 2015) {
+    const date = new Date(y, m - 1, d);
+    const isValidDate = date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
+    if (!d || !m || !y || !isValidDate || y < 1920 || y > 2015) {
       setError("Зөв огноо оруулна уу");
       return;
     }
@@ -1216,7 +1251,7 @@ function LifeInputScreen({
     }
   };
 
-  const progress = ((step) / lifeQuestions.length) * 100;
+  const progress = ((step + 1) / lifeQuestions.length) * 100;
   const q = lifeQuestions[step];
 
   return (
@@ -1237,7 +1272,7 @@ function LifeInputScreen({
           <motion.div
             className="h-full rounded-full"
             style={{ background: "linear-gradient(to right, #d4a853, #e879a0)" }}
-            animate={{ width: `${progress + 20}%` }}
+            animate={{ width: `${progress}%` }}
             transition={{ duration: 0.4 }}
           />
         </div>
@@ -1354,6 +1389,48 @@ function CoupleInputScreen({
   );
 }
 
+function BuddhistInputScreen({
+  onResult,
+  onBack,
+}: {
+  onResult: (data: ResultData) => void;
+  onBack: () => void;
+}) {
+  const revealGuardian = () => {
+    const randomIndex = Math.floor(Math.random() * buddhistGuardians.length);
+    onResult(generateBuddhistResult(randomIndex));
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex items-center px-4 pt-12 pb-4">
+        <button onClick={onBack} className="text-amber-400/70 text-sm hover:text-amber-400 transition-colors">← Буцах</button>
+      </div>
+      <div className="flex-1 px-5 max-w-md mx-auto w-full">
+        <div className="text-center mb-8">
+          <div className="text-4xl mb-3" style={{ filter: "drop-shadow(0 0 15px rgba(212,168,83,0.7))" }}>☸️</div>
+          <h2 className="text-2xl font-black mb-2" style={{ fontFamily: "'Playfair Display', serif", color: "#d4a853" }}>БУРХНЫ БЭЛГЭДЭЛ</h2>
+          <p className="text-sm text-purple-200/60">Таны өнөөдрийн бэлгэдлийг random-оор илрүүлнэ</p>
+        </div>
+        <div className="rounded-2xl p-8 text-center mb-5" style={{ background: "rgba(26,14,46,0.9)", border: "1px solid rgba(212,168,83,0.25)", boxShadow: "0 20px 50px rgba(0,0,0,0.35)" }}>
+          <div className="text-6xl mb-5" style={{ filter: "drop-shadow(0 0 20px rgba(212,168,83,0.55))" }}>☸️</div>
+          <p className="text-sm leading-relaxed text-purple-100/70 mb-7">Жанрайсиг, Дарь Эх, Манзушир, Очирваань болон бусад 8 бэлгэдлээс танд зориулсан нэгийг илрүүлээрэй.</p>
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={revealGuardian}
+            className="w-full py-4 rounded-xl font-bold text-base tracking-wide"
+            style={{ background: "linear-gradient(135deg, #d4a853, #e879a0)", color: "#0d0618", boxShadow: "0 8px 25px rgba(212,168,83,0.35)" }}
+          >
+            ✦ Миний бурхныг илрүүлэх ✦
+          </motion.button>
+        </div>
+        <p className="text-center text-xs text-purple-200/30 pb-8">Уламжлалт бэлгэдлийн тайлбар · 8 боломж</p>
+      </div>
+    </div>
+  );
+}
+
 function ResultScreen({
   data,
   onRestart,
@@ -1367,8 +1444,9 @@ function ResultScreen({
 }) {
   const [showPremium, setShowPremium] = useState(false);
   const [shareStatus, setShareStatus] = useState("");
+  const [downloadStatus, setDownloadStatus] = useState("");
 
-  const accentColor = data.quizType === "money" ? "#d4a853" : data.quizType === "name" ? "#e879a0" : "#9b5de5";
+  const accentColor = data.quizType === "money" ? "#d4a853" : data.quizType === "name" ? "#e879a0" : data.quizType === "buddhist" ? "#d4a853" : "#9b5de5";
 
   const getShareUrl = () => {
     const url = new URL(window.location.href);
@@ -1400,6 +1478,65 @@ function ResultScreen({
     } catch {
       setShareStatus("Copy хийх боломжгүй байна");
     }
+  };
+
+  const downloadResultCard = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1080;
+    canvas.height = 1350;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const background = context.createLinearGradient(0, 0, 1080, 1350);
+    background.addColorStop(0, "#0d0618");
+    background.addColorStop(0.55, "#241334");
+    background.addColorStop(1, "#2d1a0e");
+    context.fillStyle = background;
+    context.fillRect(0, 0, 1080, 1350);
+    context.strokeStyle = `${accentColor}90`;
+    context.lineWidth = 4;
+    context.strokeRect(36, 36, 1008, 1278);
+    context.textAlign = "center";
+    context.fillStyle = accentColor;
+    context.font = "600 28px sans-serif";
+    context.fillText("ТАВИЛАН · ТАНЫ ҮР ДҮН", 540, 130);
+    context.font = "160px sans-serif";
+    context.fillText(data.symbol, 540, 410);
+    context.fillStyle = "#f5e6d3";
+    context.font = "900 46px sans-serif";
+    context.fillText(data.headline, 540, 520);
+    context.fillStyle = accentColor;
+    context.font = "700 32px sans-serif";
+    context.fillText(data.symbolLabel, 540, 590);
+    context.fillStyle = "#ead9d4";
+    context.font = "30px sans-serif";
+    const words = data.description.split(" ");
+    let line = "";
+    let lineY = 730;
+    words.forEach((word) => {
+      const nextLine = line ? `${line} ${word}` : word;
+      if (context.measureText(nextLine).width > 820) {
+        context.fillText(line, 540, lineY);
+        line = word;
+        lineY += 48;
+      } else {
+        line = nextLine;
+      }
+    });
+    context.fillText(line, 540, lineY);
+    context.fillStyle = "#b89ab4";
+    context.font = "24px sans-serif";
+    context.fillText("Чи бас өөрийгөө шалгаад үзээрэй", 540, 1200);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const link = document.createElement("a");
+      link.download = "tavilan-result.png";
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      URL.revokeObjectURL(link.href);
+      setDownloadStatus("Татагдлаа!");
+      window.setTimeout(() => setDownloadStatus(""), 2200);
+    }, "image/png");
   };
 
   useEffect(() => {
@@ -1527,7 +1664,7 @@ function ResultScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="grid grid-cols-3 gap-2 mb-6"
+          className="grid grid-cols-4 gap-2 mb-6"
         >
           <button
             onClick={() => shareTo("facebook")}
@@ -1561,6 +1698,17 @@ function ResultScreen({
             }}
           >
             <span>🔗</span> {shareStatus || "Link copy"}
+          </button>
+          <button
+            onClick={downloadResultCard}
+            className="py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-all active:scale-95"
+            style={{
+              background: "rgba(155,93,229,0.15)",
+              border: "1px solid rgba(155,93,229,0.35)",
+              color: "#c6a3ee",
+            }}
+          >
+            <span>🖼️</span> {downloadStatus || "PNG татах"}
           </button>
         </motion.div>
 
@@ -2094,7 +2242,7 @@ export default function App() {
 
   const handleStart = (quiz: QuizType) => {
     setActiveQuiz(quiz);
-    if (!userInfo && quiz !== "couple") {
+    if (!userInfo && quiz !== "couple" && quiz !== "buddhist") {
       setPendingQuiz(quiz);
       setScreen("profile");
       return;
@@ -2292,6 +2440,18 @@ export default function App() {
                 transition={{ duration: 0.3 }}
               >
                 <CoupleInputScreen onResult={handleResult} onBack={() => setScreen("home")} />
+              </motion.div>
+            )}
+
+            {screen === "buddhist-input" && (
+              <motion.div
+                key="buddhist-input"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.3 }}
+              >
+                <BuddhistInputScreen onResult={handleResult} onBack={() => setScreen("home")} />
               </motion.div>
             )}
 
