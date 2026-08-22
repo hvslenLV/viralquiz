@@ -4,9 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Screen = "home" | "profile" | "money-input" | "name-input" | "life-input" | "couple-input" | "buddhist-input" | "result" | "payment" | "admin-login" | "admin" | "payment-confirmation";
+type Screen = "home" | "profile" | "money-input" | "name-input" | "life-input" | "couple-input" | "buddhist-input" | "tarot-input" | "result" | "payment" | "admin-login" | "admin" | "payment-confirmation";
 
-type QuizType = "money" | "name" | "life" | "couple" | "buddhist";
+type QuizType = "money" | "name" | "life" | "couple" | "buddhist" | "tarot";
 
 type Gender = "male" | "female" | "other";
 
@@ -32,6 +32,7 @@ interface Submission {
 interface ResultData {
   quizType: QuizType;
   symbol: string;
+  imageUrl?: string;
   symbolLabel: string;
   headline: string;
   description: string;
@@ -240,6 +241,31 @@ function generateBuddhistResult(guardianIndex: number): ResultData {
     description: `${guardian.name} нь ${guardian.quality.toLowerCase()}-ыг бэлгэддэг дүр юм.`,
     detail: guardian.text,
     socialCount: 2800 + guardianIndex * 91,
+  };
+}
+
+const tarotCards = [
+  { name: "Нар", symbol: "☀️", meaning: "Баяр баясал", text: "Тодорхой байдал, итгэл, сайхан мэдээний үе ирж байгааг бэлгэддэг.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/1/17/RWS_Tarot_19_Sun.jpg" },
+  { name: "Сар", symbol: "🌙", meaning: "Зөн совин", text: "Дотоод мэдрэмжээ сонсож, яаралгүй ажиглахыг сануулдаг.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/7/7f/RWS_Tarot_18_Moon.jpg" },
+  { name: "Од", symbol: "⭐", meaning: "Найдвар", text: "Хүсэл мөрөөдлөө орхилгүй, гэрэлтэй зүг рүү алхахыг бэлгэддэг.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/d/db/RWS_Tarot_17_Star.jpg" },
+  { name: "Хүч", symbol: "🦁", meaning: "Зориг", text: "Зөөлөн боловч тууштай байдал хамгийн том хүч болохыг харуулдаг.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/f/f5/RWS_Tarot_08_Strength.jpg" },
+  { name: "Дэлхий", symbol: "🌍", meaning: "Дуусгавар", text: "Нэг мөчлөг амжилттай дуусаж, дараагийн хаалга нээгдэхийг бэлгэддэг.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/f/ff/RWS_Tarot_21_World.jpg" },
+  { name: "Шидтэн", symbol: "✨", meaning: "Боломж", text: "Танд байгаа чадвараа ашиглавал санаагаа бодит болгох боломжтой.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/d/de/RWS_Tarot_01_Magician.jpg" },
+  { name: "Сүйх тэрэг", symbol: "🏇", meaning: "Урагшлах", text: "Зорилгоо тодорхой барьж чадвал саад бүрийг даван туулна.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/9/9b/RWS_Tarot_07_Chariot.jpg" },
+  { name: "Эзэн хаан", symbol: "👑", meaning: "Тогтвортой байдал", text: "Хариуцлагаа өөртөө авч, амьдралдаа бат бөх суурь тавихыг бэлгэддэг.", imageUrl: "https://upload.wikimedia.org/wikipedia/commons/c/c3/RWS_Tarot_04_Emperor.jpg" },
+];
+
+function generateTarotResult(cardIndex: number): ResultData {
+  const card = tarotCards[cardIndex];
+  return {
+    quizType: "tarot",
+    symbol: card.symbol,
+    imageUrl: card.imageUrl,
+    symbolLabel: card.meaning,
+    headline: `ТАНЫ TAROT КАРТ: ${card.name.toUpperCase()}`,
+    description: card.text,
+    detail: "Энэ бол өөрийгөө эргэцүүлэн бодох зориулалттай tarot бэлгэдлийн тайлбар юм. Өнөөдрийн шийдвэрээ өөрийн бодит нөхцөл, мэдрэмж дээр тулгуурлан гаргаарай.",
+    socialCount: 3200 + cardIndex * 103,
   };
 }
 
@@ -866,6 +892,15 @@ function HomeScreen({ onStart, onAdminLogin, onProfile, userInfo }: { onStart: (
           onClick={() => onStart("buddhist")}
         />
 
+        <QuizCard
+          icon="🃏"
+          title="TAROT КАРТ"
+          subtitle="8 карт · 1 минут"
+          description="Өнөөдрийн танд ирсэн tarot картыг random-оор илрүүлж, бэлгэдлийн тайлбарыг уншаарай"
+          gradient="linear-gradient(135deg, #21143a 0%, #321a38 60%, #17152e 100%)"
+          onClick={() => onStart("tarot")}
+        />
+
         {/* Footer */}
         <div className="pt-8 text-center space-y-4">
           <p className="text-xs text-purple-200/30">Өдөр бүр 4,200+ хүн шалгадаг</p>
@@ -1431,6 +1466,44 @@ function BuddhistInputScreen({
   );
 }
 
+function TarotInputScreen({
+  onResult,
+  onBack,
+}: {
+  onResult: (data: ResultData) => void;
+  onBack: () => void;
+}) {
+  const revealCard = () => {
+    const randomIndex = Math.floor(Math.random() * tarotCards.length);
+    onResult(generateTarotResult(randomIndex));
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex items-center px-4 pt-12 pb-4">
+        <button onClick={onBack} className="text-amber-400/70 text-sm hover:text-amber-400 transition-colors">← Буцах</button>
+      </div>
+      <div className="flex-1 px-5 max-w-md mx-auto w-full">
+        <div className="text-center mb-8">
+          <div className="text-4xl mb-3" style={{ filter: "drop-shadow(0 0 15px rgba(155,93,229,0.7))" }}>🃏</div>
+          <h2 className="text-2xl font-black mb-2" style={{ fontFamily: "'Playfair Display', serif", color: "#c6a3ee" }}>TAROT КАРТ</h2>
+          <p className="text-sm text-purple-200/60">Өнөөдрийн танд ирсэн картыг random-оор илрүүлнэ</p>
+        </div>
+        <div className="rounded-2xl p-8 text-center mb-5" style={{ background: "rgba(26,14,46,0.9)", border: "1px solid rgba(155,93,229,0.3)", boxShadow: "0 20px 50px rgba(0,0,0,0.35)" }}>
+          <div className="mx-auto mb-5 flex items-center justify-center rounded-xl border border-purple-300/30" style={{ width: 120, height: 170, background: "linear-gradient(135deg, #241334, #0d0618)" }}>
+            <span className="text-5xl text-purple-200/50">✦</span>
+          </div>
+          <p className="text-sm leading-relaxed text-purple-100/70 mb-7">8 tarot картын бэлгэдлээс өнөөдрийн таны мессежийг нэгийг нь илрүүлээрэй.</p>
+          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={revealCard} className="w-full py-4 rounded-xl font-bold text-base tracking-wide" style={{ background: "linear-gradient(135deg, #9b5de5, #e879a0, #d4a853)", color: "#0d0618", boxShadow: "0 8px 25px rgba(155,93,229,0.35)" }}>
+            ✦ Миний картыг илрүүлэх ✦
+          </motion.button>
+        </div>
+        <p className="text-center text-xs text-purple-200/30 pb-8">Эргэцүүлэн бодох зориулалттай бэлгэдлийн тайлбар</p>
+      </div>
+    </div>
+  );
+}
+
 function ResultScreen({
   data,
   onRestart,
@@ -1590,7 +1663,16 @@ function ResultScreen({
           transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
           className="mb-6"
         >
-          <GlowOrb symbol={data.symbol} size={150} />
+          {data.imageUrl ? (
+            <img
+              src={data.imageUrl}
+              alt={data.headline}
+              className="mx-auto h-56 w-36 rounded-xl object-cover border-2"
+              style={{ borderColor: `${accentColor}80`, boxShadow: `0 0 30px ${accentColor}35` }}
+            />
+          ) : (
+            <GlowOrb symbol={data.symbol} size={150} />
+          )}
           <div className="text-center mt-4">
             <p
               className="text-base font-semibold tracking-wide"
@@ -2242,7 +2324,7 @@ export default function App() {
 
   const handleStart = (quiz: QuizType) => {
     setActiveQuiz(quiz);
-    if (!userInfo && quiz !== "couple" && quiz !== "buddhist") {
+    if (!userInfo && quiz !== "couple" && quiz !== "buddhist" && quiz !== "tarot") {
       setPendingQuiz(quiz);
       setScreen("profile");
       return;
@@ -2452,6 +2534,18 @@ export default function App() {
                 transition={{ duration: 0.3 }}
               >
                 <BuddhistInputScreen onResult={handleResult} onBack={() => setScreen("home")} />
+              </motion.div>
+            )}
+
+            {screen === "tarot-input" && (
+              <motion.div
+                key="tarot-input"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.3 }}
+              >
+                <TarotInputScreen onResult={handleResult} onBack={() => setScreen("home")} />
               </motion.div>
             )}
 
