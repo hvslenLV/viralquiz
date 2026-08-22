@@ -4,9 +4,9 @@ import { createClient } from "@supabase/supabase-js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type Screen = "home" | "profile" | "money-input" | "name-input" | "life-input" | "result" | "payment" | "admin-login" | "admin" | "payment-confirmation";
+type Screen = "home" | "profile" | "money-input" | "name-input" | "life-input" | "couple-input" | "result" | "payment" | "admin-login" | "admin" | "payment-confirmation";
 
-type QuizType = "money" | "name" | "life";
+type QuizType = "money" | "name" | "life" | "couple";
 
 type Gender = "male" | "female" | "other";
 
@@ -198,6 +198,27 @@ function generateLifeResult(answers: number[]): ResultData {
   };
 }
 
+function generateCoupleResult(firstName: string, secondName: string): ResultData {
+  const combined = `${firstName}${secondName}`.toLowerCase().replace(/\s/g, "");
+  const score = (Array.from(combined).reduce((sum, character) => sum + character.charCodeAt(0), 0) % 51) + 50;
+  const messages = [
+    "Та хоёрын ялгаа харилцааг тань сонирхолтой, амьд байлгадаг.",
+    "Та хоёр нэгнийхээ хүчтэй талыг нөхөж, хамтдаа өсөх боломжтой.",
+    "Инээд, илэн далангүй яриа та хоёрын холбоог улам бат бөх болгоно.",
+  ];
+  const message = messages[score % messages.length];
+
+  return {
+    quizType: "couple",
+    symbol: score >= 85 ? "💞" : score >= 70 ? "💖" : "💫",
+    symbolLabel: `${score}% нийцэл`,
+    headline: `${firstName} + ${secondName}`,
+    description: message,
+    detail: `${firstName} болон ${secondName} хоёрын нэрний энерги ${score}% нийцэж байна. Хамгийн сайхан харилцаа бол бие биенээ сонсож, хамтдаа хөгжилдөхөөс эхэлдэг.`,
+    socialCount: 1760 + score * 12,
+  };
+}
+
 // ─── Star Field ───────────────────────────────────────────────────────────────
 
 function StarField() {
@@ -367,12 +388,38 @@ const dailyHoroscopes = [
   { sign: "Загас", symbol: "♓", text: "Бүтээлч мэдрэмжээ дагавал сайхан боломж нээгдэнэ.", color: "#9bb7df", number: 2 },
 ];
 
+const dailyFocuses = [
+  "Өнөөдрийн гол түлхүүр: эхний алхмаа зоригтой хийх.",
+  "Өнөөдөр өөртөө багахан зав гаргаарай.",
+  "Нэг сайхан мэдээ таны өдрийг гэрэлтүүлнэ.",
+  "Зөв хүнтэй хийсэн яриа шинэ санаа өгнө.",
+  "Яаралгүй сонголт хамгийн зөв үр дүнг авчирна.",
+  "Өөрийнхөө зөн совинд итгэх өдөр.",
+];
+
 function DailyHoroscope() {
   const today = new Date();
   const dayKey = today.getFullYear() * 372 + (today.getMonth() + 1) * 31 + today.getDate();
   const dateLabel = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
   const [selectedIndex, setSelectedIndex] = useState(dayKey % dailyHoroscopes.length);
+  const [shareStatus, setShareStatus] = useState("");
   const horoscope = dailyHoroscopes[selectedIndex];
+  const dailyText = `${horoscope.text} ${dailyFocuses[(dayKey + selectedIndex) % dailyFocuses.length]}`;
+
+  const shareHoroscope = async () => {
+    const shareText = `${horoscope.symbol} ${horoscope.sign} ордын өнөөдрийн зурхай: ${dailyText}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Өнөөдрийн зурхай", text: shareText });
+      } else {
+        await navigator.clipboard.writeText(shareText);
+        setShareStatus("Хууллаа!");
+        window.setTimeout(() => setShareStatus(""), 2000);
+      }
+    } catch {
+      setShareStatus("Хуваалцах боломжгүй байна");
+    }
+  };
 
   return (
     <motion.section
@@ -413,16 +460,245 @@ function DailyHoroscope() {
         ))}
       </div>
 
-      <p className="text-sm leading-relaxed" style={{ color: "#ead9d4" }}>{horoscope.text}</p>
-      <div className="flex items-center gap-4 mt-4 text-xs" style={{ color: "#b89ab4" }}>
+      <p className="text-sm leading-relaxed" style={{ color: "#ead9d4" }}>{dailyText}</p>
+      <div className="flex items-center justify-between gap-3 mt-4 text-xs" style={{ color: "#b89ab4" }}>
+        <div className="flex items-center gap-4">
         <span>Азын тоо <strong style={{ color: horoscope.color }}>{horoscope.number}</strong></span>
         <span>Азын өнгө <strong style={{ color: horoscope.color }}>●</strong></span>
+        </div>
+        <button onClick={shareHoroscope} className="text-xs font-semibold transition-colors" style={{ color: horoscope.color }}>
+          {shareStatus || "Хуваалцах ↗"}
+        </button>
       </div>
     </motion.section>
   );
 }
 
+const luckWheelItems = [
+  { label: "Аз", icon: "✦", color: "#d4a853" },
+  { label: "Хайр", icon: "♡", color: "#e879a0" },
+  { label: "Мөнгө", icon: "₮", color: "#82c9c3" },
+  { label: "Амжилт", icon: "★", color: "#9b5de5" },
+  { label: "Мэдээ", icon: "◦", color: "#78b9d5" },
+  { label: "Эрч хүч", icon: "⚡", color: "#ef8d7b" },
+  { label: "Боломж", icon: "◇", color: "#b6c96b" },
+  { label: "Инээд", icon: "☀", color: "#f2c56e" },
+];
+
+function LuckWheel() {
+  const [rotation, setRotation] = useState(0);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [resultIndex, setResultIndex] = useState<number | null>(null);
+
+  const spin = () => {
+    if (isSpinning) return;
+    const nextIndex = Math.floor(Math.random() * luckWheelItems.length);
+    setIsSpinning(true);
+    setResultIndex(null);
+    setRotation((currentRotation) => currentRotation + 1440 + (luckWheelItems.length - nextIndex) * 45 + 22.5);
+    window.setTimeout(() => {
+      setResultIndex(nextIndex);
+      setIsSpinning(false);
+    }, 2200);
+  };
+
+  const result = resultIndex === null ? null : luckWheelItems[resultIndex];
+
+  return (
+    <section className="rounded-2xl p-5 mb-6 text-center" style={{ background: "linear-gradient(135deg, rgba(31,24,51,0.96), rgba(42,21,39,0.96))", border: "1px solid rgba(212,168,83,0.25)" }}>
+      <div className="flex items-center justify-between mb-4 text-left">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-amber-400/70">Өнөөдөртөө</p>
+          <h2 className="text-xl font-black mt-1" style={{ color: "#f5e6d3", fontFamily: "'Playfair Display', serif" }}>Азын хүрд</h2>
+        </div>
+        <span className="text-2xl text-amber-300">◉</span>
+      </div>
+
+      <div className="relative mx-auto mb-4" style={{ width: 176, height: 176 }}>
+        <div className="absolute left-1/2 -top-2 z-10 -translate-x-1/2 text-xl text-amber-300">▼</div>
+        <motion.div
+          className="w-full h-full rounded-full border-4 border-amber-200/20 shadow-[0_0_30px_rgba(212,168,83,0.25)]"
+          animate={{ rotate: rotation }}
+          transition={{ duration: 2.2, ease: [0.12, 0.8, 0.2, 1] }}
+          style={{ background: "conic-gradient(#d4a853 0deg 45deg, #e879a0 45deg 90deg, #82c9c3 90deg 135deg, #9b5de5 135deg 180deg, #78b9d5 180deg 225deg, #ef8d7b 225deg 270deg, #b6c96b 270deg 315deg, #f2c56e 315deg 360deg)" }}
+        >
+          <div className="absolute inset-8 rounded-full flex items-center justify-center border border-white/20" style={{ background: "#1c122c" }}>
+            <span className="text-2xl text-amber-300">✦</span>
+          </div>
+        </motion.div>
+      </div>
+
+      {result && !isSpinning && <p className="text-sm mb-3" style={{ color: result.color }}>Өнөөдрийн аз: <strong>{result.icon} {result.label}</strong></p>}
+      <button onClick={spin} disabled={isSpinning} className="px-6 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50" style={{ background: "linear-gradient(135deg, #d4a853, #e879a0)", color: "#0d0618", boxShadow: "0 6px 18px rgba(212,168,83,0.3)" }}>
+        {isSpinning ? "Эргэж байна..." : result ? "Дахин эргүүлэх" : "Аз үзэх ✦"}
+      </button>
+    </section>
+  );
+}
+
+const secretMessages = [
+  "Чиний удаан хүлээсэн хариу ойртож байна.",
+  "Өнөөдөр эхлүүлсэн жижиг зүйл ирээдүйн том боломж болно.",
+  "Чамайг дэмждэг хүн бодсоноос чинь ойрхон байна.",
+  "Зүрхэндээ хадгалсан санаагаа хэлэх цаг иржээ.",
+  "Өөрийгөө бусадтай биш, өчигдрийн өөртэйгөө харьцуул.",
+  "Санамсаргүй мэт санагдах уулзалт чухал утгатай байна.",
+  "Чиний мэдэрч буй эргэлзээний цаана зоригтой сонголт бий.",
+];
+
+function SecretMessage() {
+  const today = new Date();
+  const dayKey = today.getFullYear() * 372 + (today.getMonth() + 1) * 31 + today.getDate();
+  const [isRevealed, setIsRevealed] = useState(false);
+  const message = secretMessages[dayKey % secretMessages.length];
+
+  const shareMessage = async () => {
+    const text = `✦ Өнөөдрийн нууц мессеж: ${message}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Өнөөдрийн нууц мессеж", text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setIsRevealed(true);
+    } catch {
+    }
+  };
+
+  return (
+    <section className="rounded-2xl p-5 mb-6 text-center" style={{ background: "linear-gradient(135deg, rgba(20,30,48,0.96), rgba(37,20,51,0.96))", border: "1px solid rgba(120,185,213,0.25)" }}>
+      <div className="text-2xl mb-2 text-sky-300">✉</div>
+      <p className="text-[10px] uppercase tracking-[0.3em] text-sky-300/70">Зөвхөн өнөөдөр</p>
+      <h2 className="text-xl font-black mt-1 mb-4" style={{ color: "#f5e6d3", fontFamily: "'Playfair Display', serif" }}>Нууц мессеж</h2>
+      <div className="min-h-[58px] flex items-center justify-center rounded-xl px-4 mb-4" style={{ background: "rgba(120,185,213,0.08)", border: "1px dashed rgba(120,185,213,0.25)" }}>
+        <p className="text-sm leading-relaxed" style={{ color: isRevealed ? "#e8d5c4" : "#78b9d5" }}>
+          {isRevealed ? message : "Өнөөдөр чамд юу хэлэх бол?"}
+        </p>
+      </div>
+      <div className="flex justify-center gap-3">
+        <button onClick={() => setIsRevealed(true)} className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95" style={{ background: "linear-gradient(135deg, #78b9d5, #9b5de5)", color: "#0d0618" }}>
+          {isRevealed ? "Нээсэн ✦" : "Нээх ✦"}
+        </button>
+        {isRevealed && <button onClick={shareMessage} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-sky-300 border border-sky-300/30 transition-all active:scale-95">Share ↗</button>}
+      </div>
+    </section>
+  );
+}
+
+const dailyChoices = [
+  { question: "Өнөөдөр аль энергийг сонгох вэ?", options: ["Шинэ эхлэл", "Тайван амралт"], base: 58 },
+  { question: "Танд аль нь илүү чухал вэ?", options: ["Хайр", "Амжилт"], base: 46 },
+  { question: "Аз хаанаас ирэх бол?", options: ["Шинэ хүнээс", "Шинэ боломжээс"], base: 63 },
+  { question: "Өнөөдөр юу хийх вэ?", options: ["Зүрхээ дагах", "Ухаанаа сонсох"], base: 52 },
+  { question: "Амралтын өдрөө хэрхэн өнгөрөөх вэ?", options: ["Аялал", "Гэртээ тухлах"], base: 41 },
+];
+
+function DailyChoice() {
+  const today = new Date();
+  const dayKey = today.getFullYear() * 372 + (today.getMonth() + 1) * 31 + today.getDate();
+  const choice = dailyChoices[dayKey % dailyChoices.length];
+  const [selectedOption, setSelectedOption] = useState<number | null>(() => {
+    const saved = localStorage.getItem(`tavilan-choice-${dayKey}`);
+    return saved === null ? null : Number(saved);
+  });
+  const winningPercent = choice.base + (dayKey % 7) - 3;
+
+  const selectOption = (optionIndex: number) => {
+    setSelectedOption(optionIndex);
+    localStorage.setItem(`tavilan-choice-${dayKey}`, String(optionIndex));
+  };
+
+  return (
+    <section className="rounded-2xl p-5 mb-6" style={{ background: "linear-gradient(135deg, rgba(35,27,48,0.96), rgba(18,34,46,0.96))", border: "1px solid rgba(120,185,213,0.25)" }}>
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-2xl text-sky-300">⚖</span>
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-sky-300/70">Бусдын сонголт</p>
+          <h2 className="text-xl font-black mt-1" style={{ color: "#f5e6d3", fontFamily: "'Playfair Display', serif" }}>Өнөөдрийн сонголт</h2>
+        </div>
+      </div>
+      <p className="text-sm text-purple-100/80 mb-4">{choice.question}</p>
+      <div className="grid grid-cols-2 gap-3">
+        {choice.options.map((option, index) => {
+          const percent = index === 0 ? winningPercent : 100 - winningPercent;
+          return (
+            <button
+              key={option}
+              onClick={() => selectOption(index)}
+              className="rounded-xl p-3 text-left transition-all active:scale-95"
+              style={{ background: selectedOption === index ? "rgba(120,185,213,0.2)" : "rgba(255,255,255,0.04)", border: `1px solid ${selectedOption === index ? "#78b9d5" : "rgba(255,255,255,0.1)"}` }}
+            >
+              <span className="block text-sm font-semibold" style={{ color: selectedOption === index ? "#78b9d5" : "#ead9d4" }}>{option}</span>
+              {selectedOption !== null && <span className="block text-xs mt-2 text-purple-200/50">{percent}% сонгосон</span>}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+const moodOptions = [
+  { icon: "🤩", label: "Гайхалтай", message: "Энэ эрч хүчээ өнөөдөр нэг зорилгод төвлөрүүлээрэй." },
+  { icon: "🙂", label: "Сайхан", message: "Жижиг баяр баяслыг анзаарвал өдөр бүр илүү гэрэлтэнэ." },
+  { icon: "😌", label: "Тайван", message: "Яарах хэрэггүй. Өөрийн хэмнэлээр явбал хангалттай." },
+  { icon: "😴", label: "Ядарсан", message: "Өнөөдөр өөртөө зөөлөн хандаж, богино завсарлага аваарай." },
+];
+
+function MoodCheck() {
+  const today = new Date();
+  const dayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  const [selectedMood, setSelectedMood] = useState<number | null>(() => {
+    const saved = localStorage.getItem(`tavilan-mood-${dayKey}`);
+    return saved === null ? null : Number(saved);
+  });
+  const mood = selectedMood === null ? null : moodOptions[selectedMood];
+
+  const chooseMood = (moodIndex: number) => {
+    setSelectedMood(moodIndex);
+    localStorage.setItem(`tavilan-mood-${dayKey}`, String(moodIndex));
+  };
+
+  return (
+    <section className="rounded-2xl p-5 mb-6" style={{ background: "linear-gradient(135deg, rgba(45,25,42,0.96), rgba(33,27,52,0.96))", border: "1px solid rgba(232,121,160,0.22)" }}>
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-2xl">🌈</span>
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.3em] text-pink-300/70">Өөрийгөө сонс</p>
+          <h2 className="text-xl font-black mt-1" style={{ color: "#f5e6d3", fontFamily: "'Playfair Display', serif" }}>Өнөөдөр ямар байна?</h2>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {moodOptions.map((option, index) => (
+          <button key={option.label} onClick={() => chooseMood(index)} className="rounded-xl py-3 transition-all active:scale-95" style={{ background: selectedMood === index ? "rgba(232,121,160,0.2)" : "rgba(255,255,255,0.04)", border: `1px solid ${selectedMood === index ? "#e879a0" : "rgba(255,255,255,0.1)"}` }}>
+            <span className="block text-2xl">{option.icon}</span>
+            <span className="block text-[10px] mt-1 text-purple-200/60">{option.label}</span>
+          </button>
+        ))}
+      </div>
+      {mood && <p className="text-sm leading-relaxed text-center mt-4 text-purple-100/75">{mood.message}</p>}
+    </section>
+  );
+}
+
 function HomeScreen({ onStart, onAdminLogin, onProfile, userInfo }: { onStart: (quiz: QuizType) => void; onAdminLogin: () => void; onProfile: () => void; userInfo: UserInfo | null }) {
+  const [streak, setStreak] = useState(0);
+
+  useEffect(() => {
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const yesterdayKey = `${yesterday.getFullYear()}-${yesterday.getMonth() + 1}-${yesterday.getDate()}`;
+    const savedDate = localStorage.getItem("tavilan-last-visit");
+    const savedStreak = Number(localStorage.getItem("tavilan-streak") || 0);
+    const nextStreak = savedDate === todayKey ? savedStreak : savedDate === yesterdayKey ? savedStreak + 1 : 1;
+
+    localStorage.setItem("tavilan-last-visit", todayKey);
+    localStorage.setItem("tavilan-streak", String(nextStreak));
+    setStreak(nextStreak);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Hero */}
@@ -504,6 +780,15 @@ function HomeScreen({ onStart, onAdminLogin, onProfile, userInfo }: { onStart: (
       {/* Quiz Cards */}
       <div className="flex-1 px-4 pb-10 space-y-4 max-w-md mx-auto w-full">
         <DailyHoroscope />
+        <LuckWheel />
+        <SecretMessage />
+        <DailyChoice />
+        <MoodCheck />
+
+        <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: "rgba(212,168,83,0.08)", border: "1px solid rgba(212,168,83,0.2)" }}>
+          <span className="text-xs text-purple-200/60">Таны өдөр тутмын streak</span>
+          <strong className="text-sm text-amber-300">🔥 {streak} өдөр</strong>
+        </div>
 
         <p
           className="text-center text-xs tracking-widest uppercase mb-5"
@@ -537,6 +822,15 @@ function HomeScreen({ onStart, onAdminLogin, onProfile, userInfo }: { onStart: (
           description="Танд зориулагдсан тусгай зам байдаг. 5 асуулт хариулж, өөрийн амьдралын чиглэлийг нээ"
           gradient="linear-gradient(135deg, #1a0e2e 0%, #0e1a2e 60%, #0d1518 100%)"
           onClick={() => onStart("life")}
+        />
+
+        <QuizCard
+          icon="💞"
+          title="ХОСЫН НИЙЦЭЛ"
+          subtitle="Хоёр нэрээр"
+          description="Та хоёрын нэрний энерги хэр нийцдэгийг шалгаад үр дүнгээ найзтайгаа хуваалцаарай"
+          gradient="linear-gradient(135deg, #2a1027 0%, #251334 60%, #17102c 100%)"
+          onClick={() => onStart("couple")}
         />
 
         {/* Footer */}
@@ -1001,6 +1295,65 @@ function LifeInputScreen({
   );
 }
 
+function CoupleInputScreen({
+  onResult,
+  onBack,
+}: {
+  onResult: (data: ResultData) => void;
+  onBack: () => void;
+}) {
+  const [firstName, setFirstName] = useState("");
+  const [secondName, setSecondName] = useState("");
+
+  const handleSubmit = () => {
+    if (firstName.trim().length < 2 || secondName.trim().length < 2) return;
+    onResult(generateCoupleResult(firstName.trim(), secondName.trim()));
+  };
+
+  const inputStyle = {
+    background: "rgba(45,26,62,0.8)",
+    border: "1px solid rgba(232,121,160,0.3)",
+    color: "#f5e6d3",
+    borderRadius: 12,
+    fontSize: 18,
+    fontWeight: 600,
+    outline: "none",
+    width: "100%",
+    padding: "14px 16px",
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex items-center px-4 pt-12 pb-4">
+        <button onClick={onBack} className="text-amber-400/70 text-sm hover:text-amber-400 transition-colors">← Буцах</button>
+      </div>
+      <div className="flex-1 px-5 max-w-md mx-auto w-full">
+        <div className="text-center mb-10">
+          <div className="text-4xl mb-3" style={{ filter: "drop-shadow(0 0 15px rgba(232,121,160,0.7))" }}>💞</div>
+          <h2 className="text-2xl font-black mb-2" style={{ fontFamily: "'Playfair Display', serif", color: "#e879a0" }}>ХОСЫН НИЙЦЭЛ</h2>
+          <p className="text-sm text-purple-200/60">Хоёр нэрээ оруулаад хэр нийцэхээ мэдээрэй</p>
+        </div>
+
+        <div className="rounded-2xl p-6" style={{ background: "rgba(26,14,46,0.9)", border: "1px solid rgba(232,121,160,0.25)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}>
+          <label className="block text-xs text-pink-400/70 uppercase tracking-wider mb-2">Эхний нэр</label>
+          <input type="text" placeholder="Жишээ: Болд" value={firstName} onChange={(event) => setFirstName(event.target.value)} maxLength={24} style={{ ...inputStyle, marginBottom: 16 }} />
+          <label className="block text-xs text-pink-400/70 uppercase tracking-wider mb-2">Хоёр дахь нэр</label>
+          <input type="text" placeholder="Жишээ: Саруул" value={secondName} onChange={(event) => setSecondName(event.target.value)} onKeyDown={(event) => event.key === "Enter" && handleSubmit()} maxLength={24} style={{ ...inputStyle, marginBottom: 24 }} />
+          <button
+            onClick={handleSubmit}
+            disabled={firstName.trim().length < 2 || secondName.trim().length < 2}
+            className="w-full py-4 rounded-xl font-bold text-base tracking-wide transition-all active:scale-95 disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg, #e879a0, #9b5de5, #d4a853)", color: "#0d0618", boxShadow: "0 8px 25px rgba(232,121,160,0.35)" }}
+          >
+            ✦ Нийцлийг шалгах ✦
+          </button>
+        </div>
+        <p className="text-center text-xs text-purple-200/30 mt-5">Таны нэр хадгалагдахгүй</p>
+      </div>
+    </div>
+  );
+}
+
 function ResultScreen({
   data,
   onRestart,
@@ -1271,7 +1624,7 @@ function ResultScreen({
                       className="text-2xl font-black"
                       style={{ fontFamily: "'Playfair Display', serif", color: accentColor }}
                     >
-                      12,000₮
+                      8,000₮
                     </span>
                     <span className="text-xs text-purple-200/40 ml-2 line-through">22,000₮</span>
                   </div>
@@ -1464,7 +1817,7 @@ function PaymentScreen({
                   className="text-2xl font-black"
                   style={{ color: accentColor, fontFamily: "'Playfair Display', serif" }}
                 >
-                  12,000₮
+                  8,000₮
                 </p>
               </div>
             </div>
@@ -1741,7 +2094,7 @@ export default function App() {
 
   const handleStart = (quiz: QuizType) => {
     setActiveQuiz(quiz);
-    if (!userInfo) {
+    if (!userInfo && quiz !== "couple") {
       setPendingQuiz(quiz);
       setScreen("profile");
       return;
@@ -1790,20 +2143,19 @@ export default function App() {
       setSubmissions((prev) => [submission, ...prev]);
 
       if (supabase) {
-        try {
-          await supabase.from("submissions").insert({
-            id: submission.id,
-            name: submission.name,
-            email: submission.email,
-            age: submission.age,
-            gender: submission.gender,
-            quiz_type: submission.quizType,
-            headline: submission.headline,
-            status: submission.status,
-            created_at: submission.createdAt,
-          });
-        } catch {
-          // Ignore Supabase write errors and keep the local demo state.
+        const { error } = await supabase.from("submissions").insert({
+          name: submission.name,
+          email: submission.email,
+          age: submission.age,
+          gender: submission.gender,
+          quiz_type: submission.quizType,
+          headline: submission.headline,
+          status: submission.status,
+          created_at: submission.createdAt,
+        });
+
+        if (error) {
+          console.error("Supabase submission insert failed:", error);
         }
       }
     }
@@ -1928,6 +2280,18 @@ export default function App() {
                 transition={{ duration: 0.3 }}
               >
                 <LifeInputScreen onResult={handleResult} onBack={() => setScreen("home")} />
+              </motion.div>
+            )}
+
+            {screen === "couple-input" && (
+              <motion.div
+                key="couple-input"
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.3 }}
+              >
+                <CoupleInputScreen onResult={handleResult} onBack={() => setScreen("home")} />
               </motion.div>
             )}
 
