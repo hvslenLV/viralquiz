@@ -941,8 +941,41 @@ function ResultScreen({
   onPurchase: () => void;
 }) {
   const [showPremium, setShowPremium] = useState(false);
+  const [shareStatus, setShareStatus] = useState("");
 
   const accentColor = data.quizType === "money" ? "#d4a853" : data.quizType === "name" ? "#e879a0" : "#9b5de5";
+
+  const getShareUrl = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("challenge", data.quizType);
+    return url.toString();
+  };
+
+  const getShareText = () => `Миний үр дүн: ${data.headline}. Чи бас өөрийгөө шалгаад үзээрэй!`;
+
+  const shareTo = async (target: "facebook" | "messenger") => {
+    if (target === "messenger" && navigator.share) {
+      await navigator.share({ title: data.headline, text: getShareText(), url: getShareUrl() });
+      return;
+    }
+
+    const shareUrl = encodeURIComponent(getShareUrl());
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`,
+      "viral-quiz-share",
+      "width=620,height=520,noopener,noreferrer",
+    );
+  };
+
+  const copyShareText = async () => {
+    try {
+      await navigator.clipboard.writeText(`${getShareText()} ${getShareUrl()}`);
+      setShareStatus("Хууллаа!");
+      window.setTimeout(() => setShareStatus(""), 2200);
+    } catch {
+      setShareStatus("Copy хийх боломжгүй байна");
+    }
+  };
 
   useEffect(() => {
     const t = setTimeout(() => setShowPremium(true), 2000);
@@ -1069,9 +1102,10 @@ function ResultScreen({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="grid grid-cols-2 gap-3 mb-6"
+          className="grid grid-cols-3 gap-2 mb-6"
         >
           <button
+            onClick={() => shareTo("facebook")}
             className="py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-95"
             style={{
               background: "rgba(24,119,242,0.2)",
@@ -1082,6 +1116,7 @@ function ResultScreen({
             <span>📘</span> Facebook
           </button>
           <button
+            onClick={() => shareTo("messenger")}
             className="py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-95"
             style={{
               background: "rgba(0,168,132,0.2)",
@@ -1090,6 +1125,17 @@ function ResultScreen({
             }}
           >
             <span>💬</span> Messenger
+          </button>
+          <button
+            onClick={copyShareText}
+            className="py-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-all active:scale-95"
+            style={{
+              background: "rgba(212,168,83,0.15)",
+              border: "1px solid rgba(212,168,83,0.35)",
+              color: "#e8c878",
+            }}
+          >
+            <span>🔗</span> {shareStatus || "Link copy"}
           </button>
         </motion.div>
 
