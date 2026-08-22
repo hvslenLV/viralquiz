@@ -352,6 +352,76 @@ function QuizCard({
 
 // ─── Screens ──────────────────────────────────────────────────────────────────
 
+const dailyHoroscopes = [
+  { sign: "Хонь", symbol: "♈", text: "Шинэ санаагаа өнөөдөр эхлүүлэхэд тохиромжтой өдөр.", color: "#ef8d7b", number: 7 },
+  { sign: "Үхэр", symbol: "♉", text: "Тэвчээртэй алхам таныг хүссэн үр дүнд хүргэнэ.", color: "#b6c96b", number: 4 },
+  { sign: "Ихэр", symbol: "♊", text: "Чухал мэдээ эсвэл сонирхолтой уулзалт хүлээж байна.", color: "#f2c56e", number: 3 },
+  { sign: "Мэлхий", symbol: "♋", text: "Сэтгэлээ сонсвол зөв шийдвэр өөрөө тодорно.", color: "#82c9c3", number: 2 },
+  { sign: "Арслан", symbol: "♌", text: "Таны өөртөө итгэх итгэл бусдад хүч өгнө.", color: "#e6a45d", number: 1 },
+  { sign: "Охин", symbol: "♍", text: "Жижиг зүйлд анхаарвал том боломжийг олж харна.", color: "#d1a4dc", number: 6 },
+  { sign: "Жинлүүр", symbol: "♎", text: "Харилцаанд чин сэтгэлийн яриа хамгийн их тусална.", color: "#e7a0bd", number: 9 },
+  { sign: "Хилэнц", symbol: "♏", text: "Дотоод мэдрэмж тань өнөөдөр маш зөв чиглүүлнэ.", color: "#d98080", number: 8 },
+  { sign: "Нум", symbol: "♐", text: "Төлөвлөгөөнөөсөө бага зэрэг хазайх нь аз авчирна.", color: "#bd9be0", number: 5 },
+  { sign: "Матар", symbol: "♑", text: "Хийх ажлаа эрэмбэлбэл өдөр тань хөнгөн өнгөрнө.", color: "#9ca9c9", number: 8 },
+  { sign: "Хумх", symbol: "♒", text: "Өөр өнцгөөр бодсон санаа тань анхаарал татна.", color: "#78b9d5", number: 11 },
+  { sign: "Загас", symbol: "♓", text: "Бүтээлч мэдрэмжээ дагавал сайхан боломж нээгдэнэ.", color: "#9bb7df", number: 2 },
+];
+
+function DailyHoroscope() {
+  const today = new Date();
+  const dayKey = today.getFullYear() * 372 + (today.getMonth() + 1) * 31 + today.getDate();
+  const dateLabel = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, "0")}.${String(today.getDate()).padStart(2, "0")}`;
+  const [selectedIndex, setSelectedIndex] = useState(dayKey % dailyHoroscopes.length);
+  const horoscope = dailyHoroscopes[selectedIndex];
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.15 }}
+      className="rounded-2xl p-5 mb-6"
+      style={{
+        background: "linear-gradient(135deg, rgba(38,22,57,0.96), rgba(28,19,43,0.96))",
+        border: `1px solid ${horoscope.color}45`,
+        boxShadow: `0 10px 28px rgba(0,0,0,0.28), 0 0 24px ${horoscope.color}12`,
+      }}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.3em]" style={{ color: horoscope.color }}>Өнөөдөр · {dateLabel}</p>
+          <h2 className="text-xl font-black mt-1" style={{ color: "#f5e6d3", fontFamily: "'Playfair Display', serif" }}>Өнөөдрийн зурхай</h2>
+        </div>
+        <span className="text-3xl" style={{ color: horoscope.color, filter: `drop-shadow(0 0 10px ${horoscope.color})` }}>{horoscope.symbol}</span>
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 mb-4">
+        {dailyHoroscopes.map((item, index) => (
+          <button
+            key={`${item.sign}-${index}`}
+            onClick={() => setSelectedIndex(index)}
+            className="rounded-lg py-2 text-center transition-all active:scale-95"
+            style={{
+              background: selectedIndex === index ? `${item.color}25` : "rgba(255,255,255,0.035)",
+              border: `1px solid ${selectedIndex === index ? item.color : "rgba(255,255,255,0.08)"}`,
+              color: selectedIndex === index ? item.color : "#b89ab4",
+            }}
+            aria-label={`${item.sign} орд сонгох`}
+          >
+            <span className="block text-base leading-none">{item.symbol}</span>
+            <span className="block text-[9px] mt-1">{item.sign}</span>
+          </button>
+        ))}
+      </div>
+
+      <p className="text-sm leading-relaxed" style={{ color: "#ead9d4" }}>{horoscope.text}</p>
+      <div className="flex items-center gap-4 mt-4 text-xs" style={{ color: "#b89ab4" }}>
+        <span>Азын тоо <strong style={{ color: horoscope.color }}>{horoscope.number}</strong></span>
+        <span>Азын өнгө <strong style={{ color: horoscope.color }}>●</strong></span>
+      </div>
+    </motion.section>
+  );
+}
+
 function HomeScreen({ onStart, onAdminLogin, onProfile, userInfo }: { onStart: (quiz: QuizType) => void; onAdminLogin: () => void; onProfile: () => void; userInfo: UserInfo | null }) {
   return (
     <div className="min-h-screen flex flex-col">
@@ -433,6 +503,8 @@ function HomeScreen({ onStart, onAdminLogin, onProfile, userInfo }: { onStart: (
 
       {/* Quiz Cards */}
       <div className="flex-1 px-4 pb-10 space-y-4 max-w-md mx-auto w-full">
+        <DailyHoroscope />
+
         <p
           className="text-center text-xs tracking-widest uppercase mb-5"
           style={{ color: "#b89ab4" }}
